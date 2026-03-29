@@ -5,6 +5,7 @@ export interface FileNode {
   children?: FileNode[];
   handle?: FileSystemFileHandle;
   dirHandle?: FileSystemDirectoryHandle;
+  fileData?: File;
 }
 
 export interface OrgHeading {

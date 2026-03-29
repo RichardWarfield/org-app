@@ -6,6 +6,7 @@ interface OrgEditorProps {
   content: string;
   fileName: string;
   modified: boolean;
+  canSaveToDisk: boolean;
   onContentChange: (content: string) => void;
   onSave: () => void;
 }
@@ -75,7 +76,7 @@ function OrgBlockRenderer({ block }: { block: OrgBlock }) {
   }
 }
 
-export default function OrgEditor({ content, fileName, modified, onContentChange, onSave }: OrgEditorProps) {
+export default function OrgEditor({ content, fileName, modified, canSaveToDisk, onContentChange, onSave }: OrgEditorProps) {
   const [mode, setMode] = useState<'rendered' | 'source'>('rendered');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -118,7 +119,7 @@ export default function OrgEditor({ content, fileName, modified, onContentChange
             Source
           </button>
           <button className="save-btn" onClick={onSave} disabled={!modified} title="Ctrl+S">
-            Save
+            {canSaveToDisk ? 'Save' : 'Download'}
           </button>
         </div>
       </div>

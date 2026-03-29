@@ -140,6 +140,37 @@
   color: var(--text-muted);
 }
 
+/* Drag and drop */
+.file-tree.drag-over {
+  background: var(--selected-bg);
+}
+
+.drop-overlay {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.open-files-btn {
+  font-size: 13px;
+  padding: 6px 16px;
+  margin-top: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.open-files-btn:hover {
+  background: var(--hover-bg);
+}
+
 /* Buttons */
 .open-dir-btn {
   font-size: 12px;

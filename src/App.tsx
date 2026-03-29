@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import FileTree from './components/FileTree';
 import OrgEditor from './components/OrgEditor';
 import type { FileNode } from './types';
-import { openDirectory, readFile, writeFile } from './utils/fileSystem';
+import { openDirectory, readFileNode, writeFileNode, downloadFile, buildTreeFromFiles, hasNativeFS } from './utils/fileSystem';
 import './App.css';
 
 function App() {
@@ -21,9 +21,19 @@ function App() {
     }
   }, []);
 
+  const handleDropFiles = useCallback((files: File[]) => {
+    const tree = buildTreeFromFiles(files);
+    if (tree) {
+      setRootNode(tree);
+      setSelectedFile(null);
+      setFileContent('');
+      setOriginalContent('');
+    }
+  }, []);
+
   const handleSelectFile = useCallback(async (node: FileNode) => {
-    if (node.kind === 'file' && node.handle) {
-      const content = await readFile(node.handle);
+    if (node.kind === 'file') {
+      const content = await readFileNode(node);
       setSelectedFile(node);
       setFileContent(content);
       setOriginalContent(content);
@@ -35,13 +45,18 @@ function App() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (selectedFile?.handle) {
-      await writeFile(selectedFile.handle, fileContent);
+    if (!selectedFile) return;
+    const saved = await writeFileNode(selectedFile, fileContent);
+    if (saved) {
+      setOriginalContent(fileContent);
+    } else {
+      downloadFile(selectedFile.name, fileContent);
       setOriginalContent(fileContent);
     }
   }, [selectedFile, fileContent]);
 
   const isModified = fileContent !== originalContent;
+  const canSaveToDisk = !!selectedFile?.handle;
 
   return (
     <div className="app">
@@ -55,6 +70,7 @@ function App() {
             selectedPath={selectedFile?.path ?? null}
             onSelectFile={handleSelectFile}
             onOpenDirectory={handleOpenDirectory}
+            onDropFiles={handleDropFiles}
           />
         </aside>
         <main className="main-pane">
@@ -63,6 +79,7 @@ function App() {
               content={fileContent}
               fileName={selectedFile.name}
               modified={isModified}
+              canSaveToDisk={canSaveToDisk}
               onContentChange={handleContentChange}
               onSave={handleSave}
             />
@@ -72,9 +89,16 @@ function App() {
                 <h2>Org Mode PDA</h2>
                 <p>Select a .org file from the tree to view and edit it.</p>
                 {!rootNode && (
-                  <button className="open-dir-btn-large" onClick={handleOpenDirectory}>
-                    Open a Folder
-                  </button>
+                  <>
+                    <button className="open-dir-btn-large" onClick={hasNativeFS ? handleOpenDirectory : undefined}>
+                      {hasNativeFS ? 'Open a Folder' : 'Drop .org files to get started'}
+                    </button>
+                    {!hasNativeFS && (
+                      <p className="hint">
+                        Tip: Use Chrome or Edge for full folder access and saving back to disk
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
