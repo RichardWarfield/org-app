@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/org-mode-pda-app-Vfav9]
   workflow_dispatch:
 
 permissions:
