@@ -10,7 +10,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const handleOpenDirectory = useCallback(async () => {
     const result = await openDirectory();
     if (result) {
@@ -64,14 +64,23 @@ function App() {
         <h1>Org Mode PDA</h1>
       </header>
       <div className="app-body">
-        <aside className="sidebar">
-          <FileTree
+        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+          >
+            {sidebarCollapsed ? '▸' : '▾'}
+          </button>
+          {!sidebarCollapsed && (
+            <FileTree
             root={rootNode}
             selectedPath={selectedFile?.path ?? null}
             onSelectFile={handleSelectFile}
             onOpenDirectory={handleOpenDirectory}
             onDropFiles={handleDropFiles}
           />
+          )}
         </aside>
         <main className="main-pane">
           {selectedFile ? (
