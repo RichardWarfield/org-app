@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import FileTree from './components/FileTree';
 import OrgEditor from './components/OrgEditor';
 import type { FileNode } from './types';
 import { openDirectory, readFileNode, writeFileNode, downloadFile, buildTreeFromFiles, hasNativeFS } from './utils/fileSystem';
 import './App.css';
+
+const POLL_INTERVAL = 2000;
 
 function App() {
   const [rootNode, setRootNode] = useState<FileNode | null>(null);
@@ -11,6 +13,9 @@ function App() {
   const [fileContent, setFileContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [diskConflict, setDiskConflict] = useState(false);
+  const diskContentRef = useRef<string>('');
+
   const handleOpenDirectory = useCallback(async () => {
     const result = await openDirectory();
     if (result) {
@@ -18,6 +23,7 @@ function App() {
       setSelectedFile(null);
       setFileContent('');
       setOriginalContent('');
+      setDiskConflict(false);
     }
   }, []);
 
@@ -28,6 +34,7 @@ function App() {
       setSelectedFile(null);
       setFileContent('');
       setOriginalContent('');
+      setDiskConflict(false);
     }
   }, []);
 
@@ -37,6 +44,8 @@ function App() {
       setSelectedFile(node);
       setFileContent(content);
       setOriginalContent(content);
+      setDiskConflict(false);
+      diskContentRef.current = content;
     }
   }, []);
 
@@ -49,11 +58,51 @@ function App() {
     const saved = await writeFileNode(selectedFile, fileContent);
     if (saved) {
       setOriginalContent(fileContent);
+      diskContentRef.current = fileContent;
+      setDiskConflict(false);
     } else {
       downloadFile(selectedFile.name, fileContent);
       setOriginalContent(fileContent);
     }
   }, [selectedFile, fileContent]);
+
+  const handleReloadFromDisk = useCallback(() => {
+    setFileContent(diskContentRef.current);
+    setOriginalContent(diskContentRef.current);
+    setDiskConflict(false);
+  }, []);
+
+  const handleDismissConflict = useCallback(() => {
+    setDiskConflict(false);
+  }, []);
+
+  // Poll for file changes on disk
+  useEffect(() => {
+    if (!selectedFile?.handle) return;
+
+    const handle = selectedFile.handle;
+    const interval = setInterval(async () => {
+      try {
+        const file = await handle.getFile();
+        const diskText = await file.text();
+        if (diskText === diskContentRef.current) return;
+
+        diskContentRef.current = diskText;
+        // No local edits: auto-reload
+        if (fileContent === originalContent) {
+          setFileContent(diskText);
+          setOriginalContent(diskText);
+        } else {
+          // Local edits exist: show conflict
+          setDiskConflict(true);
+        }
+      } catch {
+        // File may have been deleted or permission revoked
+      }
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [selectedFile, fileContent, originalContent]);
 
   const isModified = fileContent !== originalContent;
   const canSaveToDisk = !!selectedFile?.handle;
@@ -84,14 +133,23 @@ function App() {
         </aside>
         <main className="main-pane">
           {selectedFile ? (
-            <OrgEditor
-              content={fileContent}
-              fileName={selectedFile.name}
-              modified={isModified}
-              canSaveToDisk={canSaveToDisk}
-              onContentChange={handleContentChange}
-              onSave={handleSave}
-            />
+            <>
+              {diskConflict && (
+                <div className="conflict-bar">
+                  <span>File changed on disk.</span>
+                  <button onClick={handleReloadFromDisk}>Reload</button>
+                  <button onClick={handleDismissConflict}>Dismiss</button>
+                </div>
+              )}
+              <OrgEditor
+                content={fileContent}
+                fileName={selectedFile.name}
+                modified={isModified}
+                canSaveToDisk={canSaveToDisk}
+                onContentChange={handleContentChange}
+                onSave={handleSave}
+              />
+            </>
           ) : (
             <div className="empty-editor">
               <div className="empty-editor-content">
